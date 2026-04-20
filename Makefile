@@ -1,6 +1,6 @@
 VERSION ?= $(shell git describe --tags --always --dirty --match='v*' || echo 'dev')
 IMAGE_NAME ?= zenfeed-web
-REGISTRY ?= glidea
+REGISTRY ?= ghcr.io/bustesoul
 FULL_IMAGE_NAME = $(REGISTRY)/$(IMAGE_NAME)
 
 .PHONY: push dev-push
