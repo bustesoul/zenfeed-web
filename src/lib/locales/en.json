@@ -69,7 +69,8 @@
     "nav": {
         "home": "Home",
         "settings": "Settings",
-        "githubStarTooltip": "Star the project to support us!"
+        "githubStarTooltip": "Star the project to support us!",
+        "logout": "Logout"
     },
     "advancedConfig": {
         "loading": "Loading configuration...",
@@ -174,5 +175,12 @@
         "backButton": "Back",
         "visitSourceButton": "More"
     },
-    "playPodcastButton": "Podcast"
+    "playPodcastButton": "Podcast",
+    "login": {
+        "title": "Login",
+        "username": "Username",
+        "password": "Password",
+        "submit": "Login",
+        "error": "Invalid username or password"
+    }
 }

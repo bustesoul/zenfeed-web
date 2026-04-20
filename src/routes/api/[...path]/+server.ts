@@ -44,6 +44,7 @@ const handler: RequestHandler = async (event) => {
             headers: {
                 'Content-Type': request.headers.get('Content-Type') || '',
                 'Accept': request.headers.get('Accept') || '*/*',
+                'Cookie': request.headers.get('Cookie') || '',
             },
             body: request.method !== 'GET' && request.method !== 'HEAD' ? request.body : null,
             duplex: 'half'

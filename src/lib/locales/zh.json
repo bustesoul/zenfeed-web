@@ -69,7 +69,8 @@
     "nav": {
         "home": "主页",
         "settings": "设置",
-        "githubStarTooltip": "Star 项目，支持我们走下去"
+        "githubStarTooltip": "Star 项目，支持我们走下去",
+        "logout": "退出登录"
     },
     "advancedConfig": {
         "loading": "正在加载配置...",
@@ -173,5 +174,12 @@
         "backButton": "返回",
         "visitSourceButton": "更多"
     },
-    "playPodcastButton": "播客"
+    "playPodcastButton": "播客",
+    "login": {
+        "title": "登录",
+        "username": "用户名",
+        "password": "密码",
+        "submit": "登录",
+        "error": "用户名或密码错误"
+    }
 }

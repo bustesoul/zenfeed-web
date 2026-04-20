@@ -123,6 +123,11 @@
             </a>
         {/if}
         <div class="tab flex-grow justify-end">
+            <form method="POST" action="/logout" class="mr-1">
+                <button type="submit" class="btn btn-ghost btn-sm">
+                    {$_("nav.logout")}
+                </button>
+            </form>
             <a
                 href="https://github.com/glidea/zenfeed"
                 target="_blank"
