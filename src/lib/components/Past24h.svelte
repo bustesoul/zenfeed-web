@@ -20,6 +20,7 @@
     } from "$lib/stores/readStateStore";
     import { shadowRender } from "$lib/actions/shadowRender";
     import { audioPlayerStore } from "$lib/stores/audioPlayerStore";
+    import FeedbackPanel from "$lib/components/FeedbackPanel.svelte";
 
     const disableAddSource = env.PUBLIC_DISABLE_ADD_SOURCE === "true";
     const disableSearchTerm = env.PUBLIC_DISABLE_SEARCH_TERM === "true";
@@ -65,6 +66,28 @@
     let isMobile = false;
     let shouldRestoreScroll = false; // Flag to indicate scroll restoration is needed
     let showRightClickTip = true; // NEW: State for showing the right-click tip
+
+    // --- Feedback Panel State ---
+    let feedbackPanelOpen = false;
+    let feedbackPanelFeed: FeedVO | null = null;
+    let feedbackToastMessage = "";
+    let feedbackToastTimer: ReturnType<typeof setTimeout> | null = null;
+
+    function openFeedbackPanel(event: MouseEvent, feed: FeedVO) {
+        event.preventDefault();
+        feedbackPanelFeed = feed;
+        feedbackPanelOpen = true;
+    }
+
+    function closeFeedbackPanel() {
+        feedbackPanelOpen = false;
+    }
+
+    function showFeedbackToast(message: string) {
+        feedbackToastMessage = message;
+        if (feedbackToastTimer) clearTimeout(feedbackToastTimer);
+        feedbackToastTimer = setTimeout(() => { feedbackToastMessage = ""; }, 3000);
+    }
 
     // --- NEW State for Desktop Layout ---
     let initialActiveGroupName: string | null = null; // Store loaded group name temporarily
@@ -1165,7 +1188,7 @@
                                                 selectedFeedDesktop,
                                             ) === getFeedItemId(feed)}
                                         on:contextmenu={(e) =>
-                                            handleMarkAsRead(e, feed)}
+                                            openFeedbackPanel(e, feed)}
                                         out:shrinkFadeOut={{ duration: 400 }}
                                     >
                                         <a
@@ -1431,7 +1454,7 @@
                                 {#each feeds as feed (getFeedItemId(feed))}
                                     <li
                                         on:contextmenu={(e) =>
-                                            handleMarkAsRead(e, feed)}
+                                            openFeedbackPanel(e, feed)}
                                         out:shrinkFadeOut={{ duration: 500 }}
                                         title={feed.labels.title ||
                                             $_("past24h.untitledFeed")}
@@ -1511,6 +1534,31 @@
                 </span>
             {/key}
             <span class="font-normal">{$_("past24h.todayReadSuffix")}</span>
+        </div>
+    {/if}
+
+    <!-- Feedback Panel -->
+    <FeedbackPanel
+        feed={feedbackPanelFeed}
+        open={feedbackPanelOpen}
+        on:close={closeFeedbackPanel}
+        on:markRead={(e) => {
+            readItemsStore.markRead(e.detail.feedId);
+            closeFeedbackPanel();
+        }}
+        on:feedbackSubmitted={(e) => {
+            showFeedbackToast(e.detail.message);
+        }}
+    />
+
+    <!-- Feedback Toast -->
+    {#if feedbackToastMessage}
+        <div
+            class="fixed top-4 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-full bg-success text-success-content shadow-lg text-sm font-medium"
+            in:fly={{ y: -20, duration: 300, easing: cubicOut }}
+            out:fly={{ y: -20, duration: 200, easing: cubicOut }}
+        >
+            {feedbackToastMessage}
         </div>
     {/if}
 </div>

@@ -1,6 +1,7 @@
 import { writable, derived } from 'svelte/store';
 import { calculateTodayReadCount } from '$lib/utils/dateUtils';
 import type { ReadItemsMap } from '$lib/utils/dateUtils'; // Import type if needed elsewhere
+import { markFeedsRead } from '$lib/utils/personalizationApi';
 
 const READ_ITEMS_STORAGE_KEY = 'zenfeed_read_feeds';
 
@@ -63,6 +64,8 @@ function createReadItemsStore() {
                         console.error('Failed to save read items to localStorage:', e);
                     }
                 }
+                // Sync to backend (fire-and-forget)
+                markFeedsRead([itemId]).catch(() => { /* backend sync best-effort */ });
                 return newMap; // Return the updated map for the store
             }
             return currentMap; // Return the unchanged map if item was already read
