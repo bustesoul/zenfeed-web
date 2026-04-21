@@ -1,6 +1,6 @@
 <script lang="ts">
     import { onMount, onDestroy } from "svelte";
-    import { _ } from "svelte-i18n";
+    import { _, locale } from "svelte-i18n";
     import { getTargetApiUrl } from "$lib/utils/apiUtils";
 
     interface SourceStat {
@@ -30,6 +30,9 @@
     let loading = true;
     let error = "";
     let intervalId: ReturnType<typeof setInterval> | null = null;
+    let relativeTimeFormatter = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
+
+    $: relativeTimeFormatter = new Intl.RelativeTimeFormat($locale || "en", { numeric: "auto" });
 
     async function fetchStats() {
         try {
@@ -60,14 +63,20 @@
 
     function relativeTime(iso: string): string {
         if (!iso || iso.startsWith("0001")) return $_("status.never");
-        const diff = Date.now() - new Date(iso).getTime();
-        const sec = Math.floor(diff / 1000);
-        if (sec < 60) return `${sec}s ago`;
-        const min = Math.floor(sec / 60);
-        if (min < 60) return `${min}m ago`;
-        const hr = Math.floor(min / 60);
-        if (hr < 24) return `${hr}h ago`;
-        return `${Math.floor(hr / 24)}d ago`;
+
+        const timestamp = new Date(iso).getTime();
+        if (Number.isNaN(timestamp)) return $_("status.never");
+
+        const seconds = Math.trunc((timestamp - Date.now()) / 1000);
+        if (Math.abs(seconds) < 60) return relativeTimeFormatter.format(seconds, "second");
+
+        const minutes = Math.trunc(seconds / 60);
+        if (Math.abs(minutes) < 60) return relativeTimeFormatter.format(minutes, "minute");
+
+        const hours = Math.trunc(minutes / 60);
+        if (Math.abs(hours) < 24) return relativeTimeFormatter.format(hours, "hour");
+
+        return relativeTimeFormatter.format(Math.trunc(hours / 24), "day");
     }
 
     function statusLabel(src: SourceStat): string {

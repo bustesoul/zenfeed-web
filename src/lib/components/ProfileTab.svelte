@@ -3,38 +3,37 @@
     import { _ } from "svelte-i18n";
     import { fly } from "svelte/transition";
     import { cubicOut } from "svelte/easing";
-    import { getTargetApiUrl } from "$lib/utils/apiUtils";
-    import { getProfile, type ProfileGlobal, type TagControl } from "$lib/utils/personalizationApi";
+    import { readItemsStore } from "$lib/stores/readStateStore";
+    import { profileStateStore } from "$lib/stores/profileStateStore";
+    import { resetProfile, type TagControl } from "$lib/utils/personalizationApi";
 
     const COLD_START_THRESHOLD = 5;
     const MILESTONE_KEY = "zenfeed_milestone_toasts";
 
-    let profile: ProfileGlobal | null = null;
-    let loading = true;
     let resetting = false;
     let resetDone = false;
 
     async function loadProfile() {
-        loading = true;
-        profile = await getProfile();
-        loading = false;
+        await profileStateStore.refresh();
     }
 
     async function handleReset() {
         if (!confirm($_("profile.resetConfirm"))) return;
         resetting = true;
         try {
-            const resp = await fetch(getTargetApiUrl("/reset_profile"), {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                credentials: "include",
-                body: JSON.stringify({}),
-            });
-            if (resp.ok) {
-                resetDone = true;
-                profile = null;
-                setTimeout(() => { resetDone = false; loadProfile(); }, 1500);
+            await resetProfile();
+            profileStateStore.clear();
+            readItemsStore.reset();
+            if (typeof localStorage !== "undefined") {
+                localStorage.removeItem(MILESTONE_KEY);
             }
+            resetDone = true;
+            setTimeout(() => {
+                resetDone = false;
+                loadProfile().catch(() => {
+                    // Ignore refresh failure after reset and keep the cleared state.
+                });
+            }, 1500);
         } finally {
             resetting = false;
         }
@@ -67,16 +66,18 @@
     }
 
     onMount(() => {
-        loadProfile();
+        profileStateStore.ensureLoaded().catch(() => {
+            // Ignore UI hydration failure here and let the empty state render.
+        });
     });
 </script>
 
 <div class="max-w-2xl mx-auto space-y-6 pb-12">
-    {#if loading}
+    {#if $profileStateStore.loading && !$profileStateStore.initialized}
         <div class="flex justify-center py-16">
             <span class="loading loading-spinner loading-md text-primary"></span>
         </div>
-    {:else if !profile || profile.feedback_count === 0}
+    {:else if !$profileStateStore.profile || $profileStateStore.profile.feedback_count === 0}
         <!-- Empty state -->
         <div class="card bg-base-100 border border-base-300 shadow-sm">
             <div class="card-body items-center text-center py-12">
@@ -95,16 +96,16 @@
         </div>
     {:else}
         <!-- Cold start progress bar (if not yet threshold) -->
-        {#if profile.feedback_count < COLD_START_THRESHOLD}
+        {#if $profileStateStore.profile.feedback_count < COLD_START_THRESHOLD}
             <div class="card bg-base-100 border border-base-300 shadow-sm">
                 <div class="card-body py-4">
                     <div class="flex justify-between text-sm mb-1">
                         <span class="font-medium">{$_("profile.coldStartProgress")}</span>
-                        <span class="text-base-content/60">{profile.feedback_count} / {COLD_START_THRESHOLD}</span>
+                        <span class="text-base-content/60">{$profileStateStore.profile.feedback_count} / {COLD_START_THRESHOLD}</span>
                     </div>
                     <progress
                         class="progress progress-primary w-full"
-                        value={profile.feedback_count}
+                        value={$profileStateStore.profile.feedback_count}
                         max={COLD_START_THRESHOLD}
                     ></progress>
                     <p class="text-xs text-base-content/50 mt-1">{$_("profile.coldStartHint")}</p>
@@ -116,25 +117,25 @@
         <div class="stats shadow w-full border border-base-300">
             <div class="stat">
                 <div class="stat-title">{$_("profile.feedbackCount")}</div>
-                <div class="stat-value text-primary">{profile.feedback_count}</div>
+                <div class="stat-value text-primary">{$profileStateStore.profile.feedback_count}</div>
             </div>
             <div class="stat">
                 <div class="stat-title">{$_("profile.boostedTags")}</div>
                 <div class="stat-value text-success">
-                    {profile.tag_controls?.filter((t) => t.action === "boost").length ?? 0}
+                    {$profileStateStore.profile.tag_controls?.filter((t) => t.action === "boost").length ?? 0}
                 </div>
             </div>
             <div class="stat">
                 <div class="stat-title">{$_("profile.demotedTags")}</div>
                 <div class="stat-value text-warning">
-                    {profile.tag_controls?.filter((t) => t.action === "demote").length ?? 0}
+                    {$profileStateStore.profile.tag_controls?.filter((t) => t.action === "demote").length ?? 0}
                 </div>
             </div>
         </div>
 
         <!-- Weekly diff -->
-        {#if profile.weekly_snapshot && profile.weekly_snapshot.length > 0}
-            {@const diffs = weeklyDiff(profile.tag_controls ?? [], profile.weekly_snapshot)}
+        {#if $profileStateStore.profile.weekly_snapshot && $profileStateStore.profile.weekly_snapshot.length > 0}
+            {@const diffs = weeklyDiff($profileStateStore.profile.tag_controls ?? [], $profileStateStore.profile.weekly_snapshot)}
             {#if diffs.length > 0}
                 <div class="card bg-base-100 border border-base-300 shadow-sm">
                     <div class="card-body py-4">
@@ -153,12 +154,12 @@
         {/if}
 
         <!-- Tag controls -->
-        {#if profile.tag_controls && profile.tag_controls.length > 0}
+        {#if $profileStateStore.profile.tag_controls && $profileStateStore.profile.tag_controls.length > 0}
             <div class="card bg-base-100 border border-base-300 shadow-sm">
                 <div class="card-body py-4">
                     <h3 class="font-semibold text-sm mb-3">{$_("profile.tagControls")}</h3>
                     <div class="flex flex-wrap gap-2">
-                        {#each [...profile.tag_controls].sort((a, b) => b.weight - a.weight) as tc}
+                        {#each [...$profileStateStore.profile.tag_controls].sort((a, b) => b.weight - a.weight) as tc}
                             <span class="badge {actionColor(tc.action)} gap-1 text-xs">
                                 <span>{actionIcon(tc.action)}</span>
                                 {tc.tag}

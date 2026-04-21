@@ -18,6 +18,11 @@ export interface FeedbackResult {
     matched_preferences?: string[];
 }
 
+export interface ReadIndexEntry {
+    feed_id: string;
+    read_at: string;
+}
+
 export interface TagControl {
     tag: string;
     action: "boost" | "demote" | "block" | "flag";
@@ -25,11 +30,13 @@ export interface TagControl {
 }
 
 export interface ProfileGlobal {
+    namespace_version?: number;
     tag_controls: TagControl[];
     feedback_count: number;
     last_updated: string;
     weekly_snapshot?: TagControl[];
     weekly_snapshot_at?: string;
+    read_index?: ReadIndexEntry[];
 }
 
 export async function submitFeedback(payload: FeedbackPayload): Promise<FeedbackResult> {
@@ -73,6 +80,21 @@ export async function markFeedsRead(feedIds: string[]): Promise<void> {
     }
 }
 
+export async function listReads(): Promise<ReadIndexEntry[]> {
+    const resp = await fetch(getTargetApiUrl("/list_reads"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({}),
+    });
+    if (!resp.ok) {
+        const text = await resp.text().catch(() => resp.statusText);
+        throw new Error(text);
+    }
+    const data = await resp.json();
+    return data.reads ?? [];
+}
+
 export async function getProfile(): Promise<ProfileGlobal | null> {
     const resp = await fetch(getTargetApiUrl("/get_profile"), {
         method: "POST",
@@ -82,4 +104,17 @@ export async function getProfile(): Promise<ProfileGlobal | null> {
     });
     if (!resp.ok) return null;
     return resp.json();
+}
+
+export async function resetProfile(): Promise<void> {
+    const resp = await fetch(getTargetApiUrl("/reset_profile"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({}),
+    });
+    if (!resp.ok) {
+        const text = await resp.text().catch(() => resp.statusText);
+        throw new Error(text);
+    }
 }
