@@ -7,21 +7,24 @@
     import SettingsModal from "$lib/components/SettingsModal.svelte";
     import ProfileTab from "$lib/components/ProfileTab.svelte";
     import ArchiveTab from "$lib/components/ArchiveTab.svelte";
+    import StatusTab from "$lib/components/StatusTab.svelte";
+    import { profileStateStore } from "$lib/stores/profileStateStore";
     import { _ } from "svelte-i18n"; // Import the translation function
     import { env } from "$env/dynamic/public"; // Import env
 
+    const COLD_START_THRESHOLD = 5;
     const disableNotifications = env.PUBLIC_DISABLE_NOTIFICATIONS === "true";
     const disableAdvancedConfig = env.PUBLIC_DISABLE_ADVANCED_CONFIG === "true";
     const announcementText = env.PUBLIC_ANNOUNCEMENT_TEXT || "";
     const dismissedAnnouncementKey = "dismissedAnnouncementText";
 
     // Define available tabs based on env vars
-    type AvailableTab = "past" | "notifications" | "advanced" | "archive" | "profile";
+    type AvailableTab = "past" | "notifications" | "advanced" | "archive" | "profile" | "status";
     let availableTabs: AvailableTab[] = ["past"];
     if (!disableNotifications) {
         availableTabs.push("notifications");
     }
-    availableTabs.push("archive", "profile");
+    availableTabs.push("archive", "profile", "status");
     if (!disableAdvancedConfig) {
         availableTabs.push("advanced");
     }
@@ -32,6 +35,9 @@
     let showAnnouncement = $state(false);
 
     onMount(() => {
+        profileStateStore.ensureLoaded().catch(() => {
+            // Ignore profile hydration failure on the homepage.
+        });
         if (browser && announcementText) {
             const dismissedText = localStorage.getItem(
                 dismissedAnnouncementKey,
@@ -130,6 +136,15 @@
         >
             {$_("tabs.profile")}
         </a>
+        <a
+            role="tab"
+            class="tab pl-4 {activeTab === 'status' ? 'tab-active' : ''}"
+            onclick={() => setActiveTab("status")}
+            onkeypress={(e) => e.key === "Enter" && setActiveTab("status")}
+            tabindex={activeTab === "status" ? 0 : -1}
+        >
+            {$_("tabs.status")}
+        </a>
         {#if !disableAdvancedConfig && availableTabs.includes("advanced")}
             <a
                 role="tab"
@@ -194,6 +209,40 @@
     </div>
 
     <div>
+        {#if activeTab === "past" && $profileStateStore.initialized && (($profileStateStore.profile?.feedback_count ?? 0) < COLD_START_THRESHOLD)}
+            {@const feedbackCount = $profileStateStore.profile?.feedback_count ?? 0}
+            {@const remaining = COLD_START_THRESHOLD - feedbackCount}
+            <div class="mb-4 rounded-2xl border border-primary/20 bg-gradient-to-r from-primary/10 via-base-100 to-secondary/10 shadow-sm">
+                <div class="flex flex-col gap-3 px-4 py-4 md:flex-row md:items-center md:justify-between">
+                    <div class="space-y-1">
+                        <p class="text-xs font-semibold uppercase tracking-[0.24em] text-primary/70">
+                            {$_("profile.coldStartProgress")}
+                        </p>
+                        <h2 class="text-sm font-semibold md:text-base">
+                            {$_("profile.coldStartBannerTitle")}
+                        </h2>
+                        <p class="text-sm text-base-content/65">
+                            {$_("profile.coldStartBannerHint", {
+                                values: { remaining },
+                            })}
+                        </p>
+                    </div>
+                    <div class="min-w-[220px] space-y-2">
+                        <div class="flex items-center justify-between text-xs text-base-content/55">
+                            <span>{feedbackCount} / {COLD_START_THRESHOLD}</span>
+                            <button class="btn btn-ghost btn-xs px-2" onclick={() => setActiveTab("profile")}>
+                                {$_("tabs.profile")}
+                            </button>
+                        </div>
+                        <progress
+                            class="progress progress-primary w-full"
+                            value={feedbackCount}
+                            max={COLD_START_THRESHOLD}
+                        ></progress>
+                    </div>
+                </div>
+            </div>
+        {/if}
         {#if activeTab === "past"}
             <Past24h />
         {:else if activeTab === "notifications" && !disableNotifications}
@@ -202,6 +251,8 @@
             <ArchiveTab />
         {:else if activeTab === "profile"}
             <ProfileTab />
+        {:else if activeTab === "status"}
+            <StatusTab />
         {:else if activeTab === "advanced" && !disableAdvancedConfig}
             <AdvancedConfig />
         {/if}
