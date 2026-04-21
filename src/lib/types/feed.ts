@@ -7,5 +7,6 @@ export interface FeedVO {
     labels: FeedLabels;
     time: string;
     id?: string; // Optional pre-calculated ID
-    // Add other potential fields if necessary
-} 
+    score?: number; // Semantic similarity score (when SemanticFilter is set)
+    matched_preferences?: string[]; // Boost tags that matched this feed
+}
