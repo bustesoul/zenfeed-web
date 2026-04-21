@@ -88,7 +88,9 @@
     "helpLink1": "完整文档",
     "helpText2": "太复杂了？考虑使用 MCP 客户端，参考",
     "helpLink2": "文档",
-    "helpText3": "，让 AI 帮你改！"
+    "helpText3": "，让 AI 帮你改！",
+    "sourcesTitle": "RSS 源管理",
+    "sourceDisabled": "已停用"
   },
   "tabs": {
     "past24h": "过去 24 小时",

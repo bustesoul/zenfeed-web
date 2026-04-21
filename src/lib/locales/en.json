@@ -88,7 +88,9 @@
     "helpLink1": "Full Documentation",
     "helpText2": "Too complex? Consider using an MCP client like",
     "helpLink2": "Cherry Studio",
-    "helpText3": "and let AI assist you!"
+    "helpText3": "and let AI assist you!",
+    "sourcesTitle": "RSS Source Management",
+    "sourceDisabled": "Disabled"
   },
   "tabs": {
     "past24h": "Past 24h",

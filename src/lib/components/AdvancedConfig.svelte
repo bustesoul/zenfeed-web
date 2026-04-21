@@ -4,28 +4,39 @@
     import { _ } from "svelte-i18n";
     import { getTargetApiUrl } from "$lib/utils/apiUtils";
 
+    interface ScrapeSource {
+        name: string;
+        disabled?: boolean;
+        rss?: { url?: string; rsshub_route_path?: string };
+        [key: string]: unknown;
+    }
+
     // Component State
+    let configJson = $state<Record<string, any>>({});
     let yamlConfig = $state("");
-    let isLoading = $state(true); // Loading state for initial fetch
-    let error = $state<string | null>(null); // Error state for initial fetch
-    let isSaving = $state(false); // Loading state for saving
-    let saveError = $state<string | null>(null); // Error state specifically for saving
-    let saveSuccessMessage = $state<string | null>(null); // Success message state for saving
+    let isLoading = $state(true);
+    let error = $state<string | null>(null);
+    let isSaving = $state(false);
+    let isTogglingSource = $state<string | null>(null); // name of source being toggled
+    let saveError = $state<string | null>(null);
+    let saveSuccessMessage = $state<string | null>(null);
+
+    let sources = $derived<ScrapeSource[]>(
+        (configJson?.scrape?.sources as ScrapeSource[]) ?? [],
+    );
 
     // --- Async Functions ---
 
     async function loadConfig() {
         isLoading = true;
         error = null;
-        saveError = null; // Reset errors on load
+        saveError = null;
         saveSuccessMessage = null;
 
         try {
             const res = await fetch(getTargetApiUrl("/query_config"), {
                 method: "POST",
-                headers: {
-                    Accept: "application/json",
-                },
+                headers: { Accept: "application/json" },
             });
 
             if (!res.ok) {
@@ -38,7 +49,7 @@
                     }),
                 );
             }
-            const configJson = await res.json();
+            configJson = await res.json();
             yamlConfig = yaml.dump(configJson);
         } catch (e: any) {
             error =
@@ -52,6 +63,46 @@
         }
     }
 
+    async function applyConfig(cfg: Record<string, any>): Promise<void> {
+        const res = await fetch(getTargetApiUrl("/apply_config"), {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(cfg),
+        });
+        if (!res.ok) {
+            const errorText = await res.text();
+            throw new Error(
+                $_("advancedConfig.errorSaving", {
+                    values: {
+                        error: `${res.status} ${res.statusText}. ${errorText || "(No further details provided)"}`,
+                    },
+                }),
+            );
+        }
+    }
+
+    async function toggleSource(name: string) {
+        isTogglingSource = name;
+        saveError = null;
+        try {
+            const updated = JSON.parse(JSON.stringify(configJson));
+            const src = (updated?.scrape?.sources as ScrapeSource[])?.find(
+                (s) => s.name === name,
+            );
+            if (!src) return;
+            src.disabled = !src.disabled;
+            await applyConfig(updated);
+            configJson = updated;
+            yamlConfig = yaml.dump(updated);
+            saveSuccessMessage = $_("advancedConfig.saveSuccess");
+            setTimeout(() => (saveSuccessMessage = null), 2500);
+        } catch (e: any) {
+            saveError = e.message || "Unknown error";
+        } finally {
+            isTogglingSource = null;
+        }
+    }
+
     async function saveConfig() {
         isSaving = true;
         saveError = null;
@@ -62,34 +113,14 @@
             if (yamlConfig.trim() === "") {
                 throw new Error($_("advancedConfig.emptyConfigError"));
             }
-            const configJson = yaml.load(yamlConfig);
-            if (typeof configJson !== "object" || configJson === null) {
+            const parsed = yaml.load(yamlConfig);
+            if (typeof parsed !== "object" || parsed === null) {
                 throw new Error($_("advancedConfig.invalidYamlError"));
             }
-
-            const res = await fetch(getTargetApiUrl("/apply_config"), {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify(configJson),
-            });
-
-            if (!res.ok) {
-                const errorText = await res.text();
-                throw new Error(
-                    $_("advancedConfig.errorSaving", {
-                        values: {
-                            error: `${res.status} ${res.statusText}. ${errorText || "(No further details provided)"}`,
-                        },
-                    }),
-                );
-            }
-
+            await applyConfig(parsed as Record<string, any>);
+            configJson = parsed as Record<string, any>;
             saveSuccessMessage = $_("advancedConfig.saveSuccess");
-            setTimeout(() => {
-                saveSuccessMessage = null;
-            }, 3000);
+            setTimeout(() => (saveSuccessMessage = null), 3000);
         } catch (e: any) {
             saveError =
                 e.message ||
@@ -138,6 +169,42 @@
                 >
             </div>
         {:else}
+            <!-- RSS Sources Quick Toggle -->
+            {#if sources.length > 0}
+                <div class="mb-5">
+                    <h3 class="font-semibold text-sm mb-3 text-base-content/80">
+                        {$_("advancedConfig.sourcesTitle")}
+                    </h3>
+                    <div class="flex flex-col gap-2">
+                        {#each sources as src (src.name)}
+                            {@const url = src.rss?.url || src.rss?.rsshub_route_path || ""}
+                            {@const toggling = isTogglingSource === src.name}
+                            <div class="flex items-center gap-3 bg-base-300 rounded-lg px-4 py-2.5">
+                                <input
+                                    type="checkbox"
+                                    class="toggle toggle-primary toggle-sm"
+                                    checked={!src.disabled}
+                                    disabled={toggling || isSaving}
+                                    onchange={() => toggleSource(src.name)}
+                                />
+                                <div class="flex-1 min-w-0">
+                                    <p class="text-sm font-medium truncate">{src.name}</p>
+                                    {#if url}
+                                        <p class="text-xs text-base-content/50 truncate">{url}</p>
+                                    {/if}
+                                </div>
+                                {#if toggling}
+                                    <span class="loading loading-spinner loading-xs text-primary"></span>
+                                {:else if src.disabled}
+                                    <span class="badge badge-sm badge-ghost">{$_("advancedConfig.sourceDisabled")}</span>
+                                {/if}
+                            </div>
+                        {/each}
+                    </div>
+                </div>
+                <div class="divider my-2"></div>
+            {/if}
+
             <!-- Content Display State -->
             <textarea
                 bind:value={yamlConfig}
