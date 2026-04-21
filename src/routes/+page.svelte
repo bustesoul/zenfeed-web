@@ -5,6 +5,8 @@
     import Notifications from "$lib/components/Notifications.svelte";
     import AdvancedConfig from "$lib/components/AdvancedConfig.svelte";
     import SettingsModal from "$lib/components/SettingsModal.svelte";
+    import ProfileTab from "$lib/components/ProfileTab.svelte";
+    import ArchiveTab from "$lib/components/ArchiveTab.svelte";
     import { _ } from "svelte-i18n"; // Import the translation function
     import { env } from "$env/dynamic/public"; // Import env
 
@@ -14,11 +16,12 @@
     const dismissedAnnouncementKey = "dismissedAnnouncementText";
 
     // Define available tabs based on env vars
-    type AvailableTab = "past" | "notifications" | "advanced";
+    type AvailableTab = "past" | "notifications" | "advanced" | "archive" | "profile";
     let availableTabs: AvailableTab[] = ["past"];
     if (!disableNotifications) {
         availableTabs.push("notifications");
     }
+    availableTabs.push("archive", "profile");
     if (!disableAdvancedConfig) {
         availableTabs.push("advanced");
     }
@@ -58,8 +61,7 @@
         if (availableTabs.includes(tab)) {
             activeTab = tab;
         }
-    }
-</script>
+    }</script>
 
 <div class="container mx-auto p-4">
     {#if showAnnouncement && announcementText}
@@ -110,6 +112,24 @@
                 {$_("tabs.notifications")}
             </a>
         {/if}
+        <a
+            role="tab"
+            class="tab pl-4 {activeTab === 'archive' ? 'tab-active' : ''}"
+            onclick={() => setActiveTab("archive")}
+            onkeypress={(e) => e.key === "Enter" && setActiveTab("archive")}
+            tabindex={activeTab === "archive" ? 0 : -1}
+        >
+            {$_("tabs.archive")}
+        </a>
+        <a
+            role="tab"
+            class="tab pl-4 {activeTab === 'profile' ? 'tab-active' : ''}"
+            onclick={() => setActiveTab("profile")}
+            onkeypress={(e) => e.key === "Enter" && setActiveTab("profile")}
+            tabindex={activeTab === "profile" ? 0 : -1}
+        >
+            {$_("tabs.profile")}
+        </a>
         {#if !disableAdvancedConfig && availableTabs.includes("advanced")}
             <a
                 role="tab"
@@ -178,6 +198,10 @@
             <Past24h />
         {:else if activeTab === "notifications" && !disableNotifications}
             <Notifications />
+        {:else if activeTab === "archive"}
+            <ArchiveTab />
+        {:else if activeTab === "profile"}
+            <ProfileTab />
         {:else if activeTab === "advanced" && !disableAdvancedConfig}
             <AdvancedConfig />
         {/if}

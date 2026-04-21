@@ -93,7 +93,9 @@
   "tabs": {
     "past24h": "过去 24 小时",
     "notifications": "通知",
-    "advancedConfig": "高级配置"
+    "advancedConfig": "高级配置",
+    "archive": "📚 知识库",
+    "profile": "🎯 偏好"
   },
   "past24h": {
     "fullArticle": "更多",
@@ -198,5 +200,26 @@
     "submit": "提交并标记已读",
     "submitted": "反馈已记录",
     "openPanel": "打开反馈面板"
+  },
+  "profile": {
+    "emptyTitle": "偏好尚未建立",
+    "emptyHint": "右键文章打开反馈面板，提交反馈后系统将开始学习你的偏好。",
+    "coldStartProgress": "冷启动进度",
+    "coldStartHint": "再提交几次反馈，推荐系统就能开始个性化。",
+    "feedbackCount": "已提交反馈",
+    "boostedTags": "感兴趣话题",
+    "demotedTags": "不感兴趣话题",
+    "weeklyDiff": "本周偏好变化",
+    "tagControls": "当前偏好标签",
+    "resetButton": "重置偏好",
+    "resetConfirm": "确定要重置所有偏好数据吗？此操作不可撤销。",
+    "resetDone": "偏好已重置"
+  },
+  "archive": {
+    "title": "知识库",
+    "emptyTitle": "知识库为空",
+    "emptyHint": "在反馈面板中勾选「归档」，文章将保存在这里。",
+    "untitled": "无标题",
+    "retry": "重试"
   }
 }

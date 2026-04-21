@@ -8,7 +8,25 @@
     import {
         submitFeedback,
         type UserTag,
+        getProfile,
     } from "$lib/utils/personalizationApi";
+
+    const MILESTONE_KEY = "zenfeed_milestone_toasts";
+    const MILESTONES = [1, 5, 20];
+
+    function checkMilestone(feedbackCount: number): string | null {
+        if (typeof localStorage === "undefined") return null;
+        let shown: number[] = [];
+        try { shown = JSON.parse(localStorage.getItem(MILESTONE_KEY) || "[]"); } catch { shown = []; }
+        for (const m of MILESTONES) {
+            if (feedbackCount >= m && !shown.includes(m)) {
+                shown.push(m);
+                localStorage.setItem(MILESTONE_KEY, JSON.stringify(shown));
+                return `🎉 ${m} 次反馈里程碑！推荐系统正在学习你的偏好`;
+            }
+        }
+        return null;
+    }
 
     export let feed: FeedVO | null = null;
     export let open = false;
@@ -72,10 +90,13 @@
                 tags: tags.length > 0 ? tags : undefined,
                 archive: archive || undefined,
             });
+            // Check milestone toasts after feedback
+            const profile = await getProfile().catch(() => null);
+            const milestone = profile ? checkMilestone(profile.feedback_count) : null;
             dispatch("markRead", { feedId });
             dispatch("feedbackSubmitted", {
                 feedId,
-                message: result.message || $_("feedback.submitted"),
+                message: milestone || result.message || $_("feedback.submitted"),
             });
             close();
         } catch (e: unknown) {
