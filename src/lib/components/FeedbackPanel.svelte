@@ -11,6 +11,7 @@
   } from "$lib/utils/feedUtils";
   import {
     submitFeedback,
+    archiveFeed,
     type UserTag,
   } from "$lib/utils/personalizationApi";
   import { profileStateStore } from "$lib/stores/profileStateStore";
@@ -62,10 +63,10 @@
   let selectedCandidateTags: string[] = [];
   let score = 6;
   let scoreReason = "";
-  let action: UserTag["action"] = "boost";
-  let archive = true;
+  let action: UserTag["action"] | null = null;
   let customTag = "";
   let submitting = false;
+  let archiving = false;
   let error = "";
 
   $: {
@@ -76,10 +77,10 @@
       selectedCandidateTags = getDefaultFeedbackTags(feed);
       score = 6;
       scoreReason = "";
-      action = "boost";
-      archive = true;
+      action = null;
       customTag = "";
       submitting = false;
+      archiving = false;
       error = "";
     }
     if (!nextFeedId) {
@@ -99,6 +100,22 @@
     close();
   }
 
+  async function handleQuickArchive() {
+    if (!feed) return;
+    archiving = true;
+    error = "";
+    const feedId = getFeedItemId(feed);
+    try {
+      await archiveFeed(feedId);
+      dispatch("markRead", { feedId });
+      dispatch("feedbackSubmitted", { feedId, message: $_("feedback.archived") });
+      close();
+    } catch (e: unknown) {
+      error = e instanceof Error ? e.message : String(e);
+      archiving = false;
+    }
+  }
+
   function toggleCandidateTag(tag: string) {
     if (selectedCandidateTags.includes(tag)) {
       selectedCandidateTags = selectedCandidateTags.filter(
@@ -115,11 +132,14 @@
     error = "";
 
     const feedId = getFeedItemId(feed);
-    const tags = selectedCandidateTags.map<UserTag>((tag) => ({ tag, action }));
-    if (customTag.trim()) {
-      const custom = customTag.trim();
-      if (!tags.some((item) => item.tag === custom)) {
-        tags.push({ tag: custom, action });
+    const tags: UserTag[] = [];
+    if (action !== null) {
+      selectedCandidateTags.forEach((tag) => tags.push({ tag, action: action! }));
+      if (customTag.trim()) {
+        const custom = customTag.trim();
+        if (!tags.some((item) => item.tag === custom)) {
+          tags.push({ tag: custom, action: action! });
+        }
       }
     }
 
@@ -129,7 +149,6 @@
         score,
         score_reason: scoreReason.trim() || undefined,
         tags: tags.length > 0 ? tags : undefined,
-        archive: archive || undefined,
       });
       const profile = await profileStateStore.refresh().catch(() => null);
       const milestone = profile
@@ -199,12 +218,23 @@
       </p>
     </div>
 
-    <div class="px-4 pt-3">
+    <div class="px-4 pt-3 flex gap-2">
       <button
-        class="btn btn-sm btn-outline btn-primary w-full"
+        class="btn btn-sm btn-outline btn-primary flex-1"
         on:click={handleQuickMarkRead}
       >
         ✓ {$_("feedback.quickMarkRead")}
+      </button>
+      <button
+        class="btn btn-sm btn-outline flex-1"
+        on:click={handleQuickArchive}
+        disabled={archiving}
+      >
+        {#if archiving}
+          <span class="loading loading-spinner loading-xs"></span>
+        {:else}
+          📌 {$_("feedback.archiveNow")}
+        {/if}
       </button>
     </div>
 
@@ -262,21 +292,21 @@
             class="btn btn-sm"
             class:btn-success={action === "boost"}
             class:btn-ghost={action !== "boost"}
-            on:click={() => (action = "boost")}
+            on:click={() => (action = action === "boost" ? null : "boost")}
             >{$_("feedback.boostAction")}</button
           >
           <button
             class="btn btn-sm"
             class:btn-warning={action === "demote"}
             class:btn-ghost={action !== "demote"}
-            on:click={() => (action = "demote")}
+            on:click={() => (action = action === "demote" ? null : "demote")}
             >{$_("feedback.demoteAction")}</button
           >
           <button
             class="btn btn-sm"
             class:btn-error={action === "block"}
             class:btn-ghost={action !== "block"}
-            on:click={() => (action = "block")}
+            on:click={() => (action = action === "block" ? null : "block")}
             >{$_("feedback.blockAction")}</button
           >
         </div>
@@ -323,19 +353,6 @@
           bind:value={customTag}
           maxlength={30}
         />
-      </div>
-
-      <div class="form-control">
-        <label class="label cursor-pointer">
-          <span class="label-text font-medium text-sm"
-            >{$_("feedback.archive")}</span
-          >
-          <input
-            type="checkbox"
-            class="checkbox checkbox-sm"
-            bind:checked={archive}
-          />
-        </label>
       </div>
 
       {#if error}

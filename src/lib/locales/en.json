@@ -208,7 +208,9 @@
     "archive": "Archive this article",
     "submit": "Submit & Mark Read",
     "submitted": "Feedback recorded",
-    "openPanel": "Open feedback panel"
+    "openPanel": "Open feedback panel",
+    "archiveNow": "Archive Now",
+    "archived": "Archived"
   },
   "profile": {
     "emptyTitle": "No preferences yet",
@@ -229,9 +231,11 @@
   "archive": {
     "title": "Archive",
     "emptyTitle": "Archive is empty",
-    "emptyHint": "Check \"Archive\" in the feedback panel to save articles here.",
+    "emptyHint": "Click \"Archive Now\" in the feedback panel to save articles here.",
     "untitled": "Untitled",
-    "retry": "Retry"
+    "retry": "Retry",
+    "openArticle": "Read Article",
+    "correctFeedback": "Correct Feedback"
   },
   "status": {
     "title": "System Status",

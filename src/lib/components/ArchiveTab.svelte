@@ -2,17 +2,26 @@
     import { onMount } from "svelte";
     import { _ } from "svelte-i18n";
     import { getTargetApiUrl } from "$lib/utils/apiUtils";
+    import { getArchive, type ArchiveEntryDetail } from "$lib/utils/personalizationApi";
+    import type { FeedVO } from "$lib/types/feed";
+    import FeedbackPanel from "$lib/components/FeedbackPanel.svelte";
 
     interface ArchiveIndexEntry {
         feed_id: string;
         title?: string;
         source?: string;
+        url?: string;
         archived_at: string;
     }
 
     let archives: ArchiveIndexEntry[] = [];
     let loading = true;
     let error = "";
+
+    let correctionFeed: FeedVO | null = null;
+    let correctionOpen = false;
+    let correctionLoading: string | null = null;
+    let correctionError = "";
 
     async function loadArchives() {
         loading = true;
@@ -34,6 +43,20 @@
             error = e instanceof Error ? e.message : String(e);
         } finally {
             loading = false;
+        }
+    }
+
+    async function openCorrection(feedId: string) {
+        correctionLoading = feedId;
+        correctionError = "";
+        try {
+            const entry: ArchiveEntryDetail = await getArchive(feedId);
+            correctionFeed = { labels: entry.labels as any, time: entry.feed_time, id: entry.feed_id };
+            correctionOpen = true;
+        } catch (e: unknown) {
+            correctionError = e instanceof Error ? e.message : String(e);
+        } finally {
+            correctionLoading = null;
         }
     }
 
@@ -78,6 +101,9 @@
             <h2 class="font-semibold text-base">{$_("archive.title")} ({archives.length})</h2>
             <button class="btn btn-ghost btn-xs" on:click={loadArchives}>↻</button>
         </div>
+        {#if correctionError}
+            <div class="alert alert-error mb-3 text-sm py-2">{correctionError}</div>
+        {/if}
         <ul class="space-y-2">
             {#each archives as entry (entry.feed_id)}
                 <li class="card bg-base-100 border border-base-300 shadow-sm hover:border-primary/40 transition-colors">
@@ -86,17 +112,46 @@
                             <p class="font-medium text-sm truncate">
                                 {entry.title || $_("archive.untitled")}
                             </p>
-                            <div class="flex items-center gap-3 mt-1">
+                            <div class="flex items-center gap-3 mt-1 flex-wrap">
                                 {#if entry.source}
                                     <span class="text-xs text-base-content/50">{entry.source}</span>
                                 {/if}
                                 <span class="text-xs text-base-content/40">{formatDate(entry.archived_at)}</span>
+                                {#if entry.url}
+                                    <a
+                                        href={entry.url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        class="text-xs text-primary hover:underline"
+                                    >{$_("archive.openArticle")}</a>
+                                {/if}
                             </div>
                         </div>
-                        <span class="badge badge-ghost badge-sm shrink-0">📌</span>
+                        <div class="flex items-center gap-2 shrink-0">
+                            <button
+                                class="btn btn-ghost btn-xs"
+                                on:click={() => openCorrection(entry.feed_id)}
+                                disabled={correctionLoading === entry.feed_id}
+                            >
+                                {#if correctionLoading === entry.feed_id}
+                                    <span class="loading loading-spinner loading-xs"></span>
+                                {:else}
+                                    {$_("archive.correctFeedback")}
+                                {/if}
+                            </button>
+                            <span class="badge badge-ghost badge-sm">📌</span>
+                        </div>
                     </div>
                 </li>
             {/each}
         </ul>
     {/if}
 </div>
+
+<FeedbackPanel
+    feed={correctionFeed}
+    open={correctionOpen}
+    on:close={() => { correctionOpen = false; correctionFeed = null; }}
+    on:markRead={() => {}}
+    on:feedbackSubmitted={() => { correctionOpen = false; correctionFeed = null; }}
+/>

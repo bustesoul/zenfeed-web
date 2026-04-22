@@ -207,7 +207,9 @@
     "archive": "归档此文章",
     "submit": "提交并标记已读",
     "submitted": "反馈已记录",
-    "openPanel": "打开反馈面板"
+    "openPanel": "打开反馈面板",
+    "archiveNow": "立即归档",
+    "archived": "已归档"
   },
   "profile": {
     "emptyTitle": "偏好尚未建立",
@@ -228,9 +230,11 @@
   "archive": {
     "title": "知识库",
     "emptyTitle": "知识库为空",
-    "emptyHint": "在反馈面板中勾选「归档」，文章将保存在这里。",
+    "emptyHint": "在反馈面板中点击「立即归档」，文章将保存在这里。",
     "untitled": "无标题",
-    "retry": "重试"
+    "retry": "重试",
+    "openArticle": "阅读原文",
+    "correctFeedback": "修正反馈"
   },
   "status": {
     "title": "系统状态",

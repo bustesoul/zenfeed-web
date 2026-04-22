@@ -118,3 +118,24 @@ export async function resetProfile(): Promise<void> {
         throw new Error(text);
     }
 }
+
+export interface ArchiveEntryDetail {
+    feed_id: string;
+    labels: Record<string, string>;
+    feed_time: string;
+    archived_at: string;
+}
+
+export async function getArchive(feedId: string): Promise<ArchiveEntryDetail> {
+    const resp = await fetch(getTargetApiUrl("/get_archive"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ feed_id: feedId }),
+    });
+    if (!resp.ok) {
+        const text = await resp.text().catch(() => resp.statusText);
+        throw new Error(text);
+    }
+    return resp.json();
+}
