@@ -1,10 +1,12 @@
 <script lang="ts">
     import { onMount } from "svelte";
     import { _ } from "svelte-i18n";
+    import { goto } from "$app/navigation";
     import { getTargetApiUrl } from "$lib/utils/apiUtils";
     import { getArchive, type ArchiveEntryDetail } from "$lib/utils/personalizationApi";
     import type { FeedVO } from "$lib/types/feed";
     import FeedbackPanel from "$lib/components/FeedbackPanel.svelte";
+    import { selectedFeedStore } from "$lib/stores/feedStore";
 
     interface ArchiveIndexEntry {
         feed_id: string;
@@ -22,6 +24,30 @@
     let correctionOpen = false;
     let correctionLoading: string | null = null;
     let correctionError = "";
+    let viewLoading: string | null = null;
+
+    async function openDetail(feedId: string) {
+        viewLoading = feedId;
+        try {
+            const entry: ArchiveEntryDetail = await getArchive(feedId);
+            const feedDetailData = {
+                id: entry.feed_id,
+                title: entry.labels.title || "",
+                tags: entry.labels.tags || "",
+                summaryHtmlSnippet: entry.labels.summary_html_snippet || "",
+                link: entry.labels.link || "",
+            };
+            selectedFeedStore.set(feedDetailData);
+            try {
+                sessionStorage.setItem("selectedFeedDetail", JSON.stringify(feedDetailData));
+            } catch (_) { /* ignore */ }
+            goto("/feed-detail");
+        } catch (e: unknown) {
+            correctionError = e instanceof Error ? e.message : String(e);
+        } finally {
+            viewLoading = null;
+        }
+    }
 
     async function loadArchives() {
         loading = true;
@@ -108,8 +134,15 @@
             {#each archives as entry (entry.feed_id)}
                 <li class="card bg-base-100 border border-base-300 shadow-sm hover:border-primary/40 transition-colors">
                     <div class="card-body py-3 px-4 flex flex-row items-start gap-3">
-                        <div class="flex-1 min-w-0">
-                            <p class="font-medium text-sm truncate">
+                        <button
+                            class="flex-1 min-w-0 text-left"
+                            on:click={() => openDetail(entry.feed_id)}
+                            disabled={viewLoading === entry.feed_id}
+                        >
+                            <p class="font-medium text-sm truncate hover:text-primary transition-colors">
+                                {#if viewLoading === entry.feed_id}
+                                    <span class="loading loading-spinner loading-xs mr-1"></span>
+                                {/if}
                                 {entry.title || $_("archive.untitled")}
                             </p>
                             <div class="flex items-center gap-3 mt-1 flex-wrap">
@@ -118,15 +151,10 @@
                                 {/if}
                                 <span class="text-xs text-base-content/40">{formatDate(entry.archived_at)}</span>
                                 {#if entry.url}
-                                    <a
-                                        href={entry.url}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        class="text-xs text-primary hover:underline"
-                                    >{$_("archive.openArticle")}</a>
+                                    <span class="text-xs text-primary/60">{$_("archive.openArticle")}</span>
                                 {/if}
                             </div>
-                        </div>
+                        </button>
                         <div class="flex items-center gap-2 shrink-0">
                             <button
                                 class="btn btn-ghost btn-xs"
